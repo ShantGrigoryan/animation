@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Сердце — анимация</title>
+<style>
+  :root{
+    --cycle: 24s; /* общая длительность одного цикла анимации */
+  }
+
+  html, body{
+    margin:0;
+    height:100%;
+    background: radial-gradient(circle at 50% 40%, #201324 0%, #120b16 55%, #0a060c 100%);
+    overflow:hidden;
+  }
+
+  .stage{
+    position:relative;
+    width:100vw;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* сердце и буква A чуть ниже центра экрана по вертикали */
+  .heart-svg{
+    width:min(58vw, 58vh);
+    height:auto;
+    transform: translateY(6%);
+    overflow: visible;
+    position: relative;
+    z-index: 2;
+  }
+
+  .heart-path{
+    fill:none;
+    stroke:url(#warmGrad);
+    stroke-width:4;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    stroke-dasharray:1;
+    stroke-dashoffset:1;
+    filter: drop-shadow(0 0 12px rgba(255,140,0,0.75));
+    animation: heartDraw var(--cycle) ease-in-out infinite;
+  }
+
+  .letter-a{
+    fill:none;
+    stroke:url(#warmGradA);
+    stroke-width:5;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    stroke-dasharray:1;
+    stroke-dashoffset:1;
+    filter: drop-shadow(0 0 10px rgba(255,255,255,0.75));
+    animation: letterDraw var(--cycle) ease-in-out infinite;
+  }
+
+  /* ================= РИСОВКА СЕРДЦА =================
+     0%      – линия ещё не начата (offset 1 = скрыта)
+     0-33.3% – сердце медленно рисуется от нижней точки
+     33.3-56.25% – пауза (рисуется/держится буква A + задержка 2с)
+     56.25-72.9% – сердце стирается тем же способом, каким рисовалось
+     72.9-100%   – сердце скрыто (идёт салют)                        */
+  @keyframes heartDraw{
+    0%      { stroke-dashoffset: 1; }
+    33.3%   { stroke-dashoffset: 0; }
+    56.25%  { stroke-dashoffset: 0; }
+    72.9%   { stroke-dashoffset: -1; }
+    100%    { stroke-dashoffset: -1; }
+  }
+
+  /* ================= РИСОВКА БУКВЫ A =================
+     33.3-41.7%  – буква рисуется после того, как сердце готово
+     41.7-50%    – задержка 2 секунды, всё видно
+     50-56.25%   – буква стирается первой
+     56.25-100%  – буква скрыта                                    */
+  @keyframes letterDraw{
+    0%      { stroke-dashoffset: 1; }
+    33.3%   { stroke-dashoffset: 1; }
+    41.7%   { stroke-dashoffset: 0; }
+    50%     { stroke-dashoffset: 0; }
+    56.25%  { stroke-dashoffset: -1; }
+    100%    { stroke-dashoffset: -1; }
+  }
+
+  /* ============================================================
+     ================  НАЧАЛО БЛОКА "САЛЮТ"  ====================
+     Большой салют в несколько слоёв:
+       - основной взрыв в центре из трёх волн искр
+         (layer1 – ближняя/быстрая, layer2 – средняя, layer3 – дальняя),
+       - два дополнительных боковых взрыва (sideA / sideB),
+         которые срабатывают чуть позже основного, как настоящий
+         многозарядный салют.
+     Всё, что ниже вплоть до отметки "КОНЕЦ БЛОКА САЛЮТ",
+     отвечает за этот эффект.
+     ============================================================ */
+
+  .fireworks{
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:0;
+    height:0;
+    z-index: 1;
+  }
+
+  .fireworks.side-left{  top:38%; left:28%; }
+  .fireworks.side-right{ top:34%; left:72%; }
+
+  .flash{
+    position:absolute;
+    top:0; left:0;
+    width:14px; height:14px;
+    margin:-7px 0 0 -7px;
+    border-radius:50%;
+    background: radial-gradient(circle, #ffffff 0%, #ffd600 35%, rgba(255,80,80,0) 70%);
+    opacity:0;
+  }
+
+  .flash.main{ animation: flashPulse var(--cycle) ease-out infinite; }
+  .flash.small{
+    width:10px; height:10px; margin:-5px 0 0 -5px;
+    animation: flashPulseSmall var(--cycle) ease-out infinite;
+  }
+
+  @keyframes flashPulse{
+    0%, 73%   { opacity:0; transform:scale(0.2); }
+    76%       { opacity:1; transform:scale(2.6); }
+    84%       { opacity:0.4; transform:scale(5); }
+    91%, 100% { opacity:0; transform:scale(5.5); }
+  }
+
+  @keyframes flashPulseSmall{
+    0%, 80%   { opacity:0; transform:scale(0.2); }
+    83%       { opacity:1; transform:scale(2); }
+    90%       { opacity:0.3; transform:scale(3.5); }
+    96%, 100% { opacity:0; transform:scale(4); }
+  }
+
+  .spark{
+    position:absolute;
+    top:0; left:0;
+    width:6px; height:6px;
+    margin:-3px 0 0 -3px;
+    border-radius:50%;
+    background: var(--c, #ffcc70);
+    box-shadow: 0 0 7px var(--c, #ffcc70);
+    transform: rotate(var(--a, 0deg)) translateX(0) scale(0.4);
+    opacity:0;
+  }
+
+  /* волна 1 — ближние, самые быстрые искры */
+  .spark.layer1{ animation: sparkBurst1 var(--cycle) ease-out infinite; }
+  @keyframes sparkBurst1{
+    0%, 73%   { opacity:0; transform: rotate(var(--a)) translateX(0) scale(0.4); }
+    76%       { opacity:1; transform: rotate(var(--a)) translateX(16px) scale(1); }
+    84%       { opacity:1; transform: rotate(var(--a)) translateX(var(--d)) scale(1); }
+    91%       { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 20px)) scale(0.3); }
+    100%      { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 20px)) scale(0.3); }
+  }
+
+  /* волна 2 — средняя дистанция, чуть более поздний старт */
+  .spark.layer2{ animation: sparkBurst2 var(--cycle) ease-out infinite; }
+  @keyframes sparkBurst2{
+    0%, 75%   { opacity:0; transform: rotate(var(--a)) translateX(0) scale(0.4); }
+    79%       { opacity:1; transform: rotate(var(--a)) translateX(18px) scale(1); }
+    88%       { opacity:1; transform: rotate(var(--a)) translateX(var(--d)) scale(0.95); }
+    95%       { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 25px)) scale(0.25); }
+    100%      { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 25px)) scale(0.25); }
+  }
+
+  /* волна 3 — самые дальние и медленные искры, гаснут последними */
+  .spark.layer3{ animation: sparkBurst3 var(--cycle) ease-out infinite; }
+  @keyframes sparkBurst3{
+    0%, 77%   { opacity:0; transform: rotate(var(--a)) translateX(0) scale(0.35); }
+    82%       { opacity:0.9; transform: rotate(var(--a)) translateX(22px) scale(0.9); }
+    92%       { opacity:0.8; transform: rotate(var(--a)) translateX(var(--d)) scale(0.8); }
+    98%       { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 20px)) scale(0.2); }
+    100%      { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 20px)) scale(0.2); }
+  }
+
+  /* боковые взрывы — срабатывают чуть позже основного */
+  .spark.side{ animation: sparkBurstSide var(--cycle) ease-out infinite; }
+  @keyframes sparkBurstSide{
+    0%, 80%   { opacity:0; transform: rotate(var(--a)) translateX(0) scale(0.4); }
+    84%       { opacity:1; transform: rotate(var(--a)) translateX(14px) scale(1); }
+    90%       { opacity:1; transform: rotate(var(--a)) translateX(var(--d)) scale(0.9); }
+    96%       { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 18px)) scale(0.25); }
+    100%      { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 18px)) scale(0.25); }
+  }
+
+  /* ==================  КОНЕЦ БЛОКА "САЛЮТ"  ================== */
+
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <svg class="heart-svg" viewBox="0 0 300 250" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="warmGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%"  stop-color="#ffe600"/>
+        <stop offset="45%" stop-color="#ff6d00"/>
+        <stop offset="100%" stop-color="#ff2d55"/>
+      </linearGradient>
+      <linearGradient id="warmGradA" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%"  stop-color="#ffffff"/>
+        <stop offset="100%" stop-color="#ff9100"/>
+      </linearGradient>
+    </defs>
+
+    <!-- Сердце: путь начинается в нижней точке -->
+    <path class="heart-path" pathLength="1" d="
+      M150,225
+      C150,225 40,150 40,95
+      C40,55 75,25 105,25
+      C130,25 150,45 150,65
+      C150,45 170,25 195,25
+      C225,25 260,55 260,95
+      C260,150 150,225 150,225
+      Z" />
+
+    <!-- Буква A внутри сердца -->
+    <path class="letter-a" pathLength="1" d="
+      M120,190 L150,80 L180,190
+      M133,150 L167,150" />
+  </svg>
+
+  <!-- ==========  РАЗМЕТКА БЛОКА "САЛЮТ" (начало)  ========== -->
+
+  <!-- основной, центральный взрыв: 3 волны искр -->
+  <div class="fireworks">
+    <div class="flash main"></div>
+    <div class="spark layer1" style="--a:-2.1deg; --c:#ff6d00; --d:94px;"></div>
+    <div class="spark layer1" style="--a:8.4deg; --c:#ffe600; --d:111px;"></div>
+    <div class="spark layer1" style="--a:26.1deg; --c:#ffd60a; --d:91px;"></div>
+    <div class="spark layer1" style="--a:38.1deg; --c:#ff2d95; --d:92px;"></div>
+    <div class="spark layer1" style="--a:50.2deg; --c:#ff2d95; --d:92px;"></div>
+    <div class="spark layer1" style="--a:63.9deg; --c:#ff9100; --d:104px;"></div>
+    <div class="spark layer1" style="--a:84.6deg; --c:#ffe600; --d:105px;"></div>
+    <div class="spark layer1" style="--a:97.8deg; --c:#ff9100; --d:100px;"></div>
+    <div class="spark layer1" style="--a:105.3deg; --c:#ff3d3d; --d:111px;"></div>
+    <div class="spark layer1" style="--a:123.6deg; --c:#ffd60a; --d:104px;"></div>
+    <div class="spark layer1" style="--a:136.2deg; --c:#ff9100; --d:110px;"></div>
+    <div class="spark layer1" style="--a:147.5deg; --c:#ff9100; --d:104px;"></div>
+    <div class="spark layer1" style="--a:164.6deg; --c:#ffe600; --d:104px;"></div>
+    <div class="spark layer1" style="--a:180.8deg; --c:#ff2d95; --d:105px;"></div>
+    <div class="spark layer1" style="--a:196.0deg; --c:#ff3d3d; --d:101px;"></div>
+    <div class="spark layer1" style="--a:207.3deg; --c:#ff3d3d; --d:113px;"></div>
+    <div class="spark layer1" style="--a:219.1deg; --c:#ff6d00; --d:110px;"></div>
+    <div class="spark layer1" style="--a:238.7deg; --c:#ff3d3d; --d:92px;"></div>
+    <div class="spark layer1" style="--a:249.5deg; --c:#ff6d00; --d:112px;"></div>
+    <div class="spark layer1" style="--a:262.5deg; --c:#ffe600; --d:105px;"></div>
+    <div class="spark layer1" style="--a:272.3deg; --c:#00e5ff; --d:100px;"></div>
+    <div class="spark layer1" style="--a:288.9deg; --c:#ff2d95; --d:113px;"></div>
+    <div class="spark layer1" style="--a:299.1deg; --c:#00e5ff; --d:107px;"></div>
+    <div class="spark layer1" style="--a:319.2deg; --c:#00e5ff; --d:110px;"></div>
+    <div class="spark layer1" style="--a:330.1deg; --c:#ffd60a; --d:107px;"></div>
+    <div class="spark layer1" style="--a:346.1deg; --c:#ffe600; --d:110px;"></div>
+    <div class="spark layer2" style="--a:4.1deg; --c:#ff2d95; --d:163px;"></div>
+    <div class="spark layer2" style="--a:16.2deg; --c:#ff6d00; --d:137px;"></div>
+    <div class="spark layer2" style="--a:30.1deg; --c:#ff6d00; --d:154px;"></div>
+    <div class="spark layer2" style="--a:45.4deg; --c:#ff2d95; --d:144px;"></div>
+    <div class="spark layer2" style="--a:60.0deg; --c:#ff2d95; --d:145px;"></div>
+    <div class="spark layer2" style="--a:67.5deg; --c:#ff2d95; --d:153px;"></div>
+    <div class="spark layer2" style="--a:77.8deg; --c:#ff9100; --d:158px;"></div>
+    <div class="spark layer2" style="--a:99.8deg; --c:#00e5ff; --d:147px;"></div>
+    <div class="spark layer2" style="--a:110.7deg; --c:#ff2d95; --d:140px;"></div>
+    <div class="spark layer2" style="--a:125.2deg; --c:#00e5ff; --d:162px;"></div>
+    <div class="spark layer2" style="--a:137.6deg; --c:#ff6d00; --d:152px;"></div>
+    <div class="spark layer2" style="--a:151.3deg; --c:#ff2d95; --d:146px;"></div>
+    <div class="spark layer2" style="--a:171.6deg; --c:#ff9100; --d:140px;"></div>
+    <div class="spark layer2" style="--a:175.8deg; --c:#ffe600; --d:155px;"></div>
+    <div class="spark layer2" style="--a:193.7deg; --c:#ff3d3d; --d:153px;"></div>
+    <div class="spark layer2" style="--a:205.1deg; --c:#ffd60a; --d:139px;"></div>
+    <div class="spark layer2" style="--a:220.0deg; --c:#ff9100; --d:152px;"></div>
+    <div class="spark layer2" style="--a:237.7deg; --c:#ffd60a; --d:150px;"></div>
+    <div class="spark layer2" style="--a:251.1deg; --c:#ff2d95; --d:157px;"></div>
+    <div class="spark layer2" style="--a:267.9deg; --c:#00e5ff; --d:158px;"></div>
+    <div class="spark layer2" style="--a:279.1deg; --c:#ff2d95; --d:152px;"></div>
+    <div class="spark layer2" style="--a:289.6deg; --c:#ff6d00; --d:138px;"></div>
+    <div class="spark layer2" style="--a:303.4deg; --c:#ff9100; --d:141px;"></div>
+    <div class="spark layer2" style="--a:317.7deg; --c:#ffd60a; --d:138px;"></div>
+    <div class="spark layer2" style="--a:326.9deg; --c:#ff9100; --d:135px;"></div>
+    <div class="spark layer2" style="--a:346.6deg; --c:#ffd60a; --d:163px;"></div>
+    <div class="spark layer3" style="--a:-7.6deg; --c:#ffd60a; --d:210px;"></div>
+    <div class="spark layer3" style="--a:14.4deg; --c:#ff3d3d; --d:200px;"></div>
+    <div class="spark layer3" style="--a:34.4deg; --c:#ffe600; --d:194px;"></div>
+    <div class="spark layer3" style="--a:54.7deg; --c:#ff2d95; --d:215px;"></div>
+    <div class="spark layer3" style="--a:65.1deg; --c:#ff9100; --d:187px;"></div>
+    <div class="spark layer3" style="--a:75.5deg; --c:#ff3d3d; --d:189px;"></div>
+    <div class="spark layer3" style="--a:97.8deg; --c:#ffd60a; --d:203px;"></div>
+    <div class="spark layer3" style="--a:106.9deg; --c:#ffd60a; --d:213px;"></div>
+    <div class="spark layer3" style="--a:128.7deg; --c:#ffe600; --d:203px;"></div>
+    <div class="spark layer3" style="--a:151.4deg; --c:#ff6d00; --d:187px;"></div>
+    <div class="spark layer3" style="--a:169.4deg; --c:#ff3d3d; --d:203px;"></div>
+    <div class="spark layer3" style="--a:180.3deg; --c:#ff3d3d; --d:211px;"></div>
+    <div class="spark layer3" style="--a:200.7deg; --c:#00e5ff; --d:196px;"></div>
+    <div class="spark layer3" style="--a:212.8deg; --c:#ffd60a; --d:200px;"></div>
+    <div class="spark layer3" style="--a:234.1deg; --c:#00e5ff; --d:214px;"></div>
+    <div class="spark layer3" style="--a:240.6deg; --c:#ff2d95; --d:185px;"></div>
+    <div class="spark layer3" style="--a:265.7deg; --c:#ffd60a; --d:184px;"></div>
+    <div class="spark layer3" style="--a:278.1deg; --c:#ffe600; --d:204px;"></div>
+    <div class="spark layer3" style="--a:299.2deg; --c:#ff9100; --d:194px;"></div>
+    <div class="spark layer3" style="--a:314.0deg; --c:#ff2d95; --d:213px;"></div>
+    <div class="spark layer3" style="--a:332.2deg; --c:#ff3d3d; --d:204px;"></div>
+    <div class="spark layer3" style="--a:350.9deg; --c:#ff9100; --d:190px;"></div>
+  </div>
+
+  <!-- дополнительный взрыв слева -->
+  <div class="fireworks side-left">
+    <div class="flash small"></div>
+    <div class="spark side sideA" style="--a:-6.4deg; --c:#ff3d3d; --d:71px;"></div>
+    <div class="spark side sideA" style="--a:17.8deg; --c:#ffd60a; --d:77px;"></div>
+    <div class="spark side sideA" style="--a:50.4deg; --c:#ff6d00; --d:72px;"></div>
+    <div class="spark side sideA" style="--a:65.0deg; --c:#00e5ff; --d:78px;"></div>
+    <div class="spark side sideA" style="--a:92.6deg; --c:#00e5ff; --d:87px;"></div>
+    <div class="spark side sideA" style="--a:115.9deg; --c:#ff9100; --d:62px;"></div>
+    <div class="spark side sideA" style="--a:133.9deg; --c:#ffe600; --d:77px;"></div>
+    <div class="spark side sideA" style="--a:162.3deg; --c:#ff2d95; --d:89px;"></div>
+    <div class="spark side sideA" style="--a:179.4deg; --c:#ffe600; --d:81px;"></div>
+    <div class="spark side sideA" style="--a:206.1deg; --c:#ff9100; --d:61px;"></div>
+    <div class="spark side sideA" style="--a:217.4deg; --c:#ff2d95; --d:76px;"></div>
+    <div class="spark side sideA" style="--a:252.4deg; --c:#00e5ff; --d:60px;"></div>
+    <div class="spark side sideA" style="--a:271.5deg; --c:#ff3d3d; --d:72px;"></div>
+    <div class="spark side sideA" style="--a:287.0deg; --c:#ffe600; --d:74px;"></div>
+    <div class="spark side sideA" style="--a:307.2deg; --c:#ff6d00; --d:89px;"></div>
+    <div class="spark side sideA" style="--a:331.1deg; --c:#ff9100; --d:81px;"></div>
+  </div>
+
+  <!-- дополнительный взрыв справа -->
+  <div class="fireworks side-right">
+    <div class="flash small"></div>
+    <div class="spark side sideB" style="--a:-1.1deg; --c:#00e5ff; --d:86px;"></div>
+    <div class="spark side sideB" style="--a:28.5deg; --c:#ff9100; --d:56px;"></div>
+    <div class="spark side sideB" style="--a:41.7deg; --c:#ffd60a; --d:63px;"></div>
+    <div class="spark side sideB" style="--a:64.7deg; --c:#00e5ff; --d:74px;"></div>
+    <div class="spark side sideB" style="--a:84.1deg; --c:#ff3d3d; --d:87px;"></div>
+    <div class="spark side sideB" style="--a:118.9deg; --c:#00e5ff; --d:78px;"></div>
+    <div class="spark side sideB" style="--a:141.5deg; --c:#ffd60a; --d:70px;"></div>
+    <div class="spark side sideB" style="--a:151.6deg; --c:#ffd60a; --d:60px;"></div>
+    <div class="spark side sideB" style="--a:172.3deg; --c:#ff9100; --d:70px;"></div>
+    <div class="spark side sideB" style="--a:204.2deg; --c:#ff9100; --d:82px;"></div>
+    <div class="spark side sideB" style="--a:219.8deg; --c:#ff6d00; --d:72px;"></div>
+    <div class="spark side sideB" style="--a:241.4deg; --c:#ff6d00; --d:57px;"></div>
+    <div class="spark side sideB" style="--a:270.3deg; --c:#00e5ff; --d:74px;"></div>
+    <div class="spark side sideB" style="--a:296.9deg; --c:#ffe600; --d:86px;"></div>
+    <div class="spark side sideB" style="--a:311.0deg; --c:#00e5ff; --d:65px;"></div>
+    <div class="spark side sideB" style="--a:331.1deg; --c:#ffe600; --d:71px;"></div>
+  </div>
+
+  <!-- ==========  РАЗМЕТКА БЛОКА "САЛЮТ" (конец)  ========== -->
+
+</div>
+</body>
+</html>
