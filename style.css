@@ -1,0 +1,189 @@
+:root{
+  --cycle: 24s; /* общая длительность одного цикла анимации */
+}
+
+html, body{
+  margin:0;
+  height:100%;
+  background: radial-gradient(circle at 50% 40%, #201324 0%, #120b16 55%, #0a060c 100%);
+  overflow:hidden;
+}
+
+.stage{
+  position:relative;
+  width:100vw;
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* сердце и буква A чуть ниже центра экрана по вертикали */
+.heart-svg{
+  width:min(58vw, 58vh);
+  height:auto;
+  transform: translateY(6%);
+  overflow: visible;
+  position: relative;
+  z-index: 2;
+}
+
+.heart-path{
+  fill:none;
+  stroke:url(#warmGrad);
+  stroke-width:4;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  stroke-dasharray:1;
+  stroke-dashoffset:1;
+  filter: drop-shadow(0 0 12px rgba(255,140,0,0.75));
+  animation: heartDraw var(--cycle) ease-in-out infinite;
+}
+
+.letter-a{
+  fill:none;
+  stroke:url(#warmGradA);
+  stroke-width:5;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  stroke-dasharray:1;
+  stroke-dashoffset:1;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.75));
+  animation: letterDraw var(--cycle) ease-in-out infinite;
+}
+
+/* ================= РИСОВКА СЕРДЦА =================
+   0%      – линия ещё не начата (offset 1 = скрыта)
+   0-33.3% – сердце медленно рисуется от нижней точки
+   33.3-56.25% – пауза (рисуется/держится буква A + задержка 2с)
+   56.25-72.9% – сердце стирается тем же способом, каким рисовалось
+   72.9-100%   – сердце скрыто (идёт салют)                        */
+@keyframes heartDraw{
+  0%      { stroke-dashoffset: 1; }
+  33.3%   { stroke-dashoffset: 0; }
+  56.25%  { stroke-dashoffset: 0; }
+  72.9%   { stroke-dashoffset: -1; }
+  100%    { stroke-dashoffset: -1; }
+}
+
+/* ================= РИСОВКА БУКВЫ A =================
+   33.3-41.7%  – буква рисуется после того, как сердце готово
+   41.7-50%    – задержка 2 секунды, всё видно
+   50-56.25%   – буква стирается первой
+   56.25-100%  – буква скрыта                                    */
+@keyframes letterDraw{
+  0%      { stroke-dashoffset: 1; }
+  33.3%   { stroke-dashoffset: 1; }
+  41.7%   { stroke-dashoffset: 0; }
+  50%     { stroke-dashoffset: 0; }
+  56.25%  { stroke-dashoffset: -1; }
+  100%    { stroke-dashoffset: -1; }
+}
+
+/* ============================================================
+   ================  НАЧАЛО БЛОКА "САЛЮТ"  ====================
+   Большой салют в несколько слоёв:
+     - основной взрыв в центре из трёх волн искр
+       (layer1 – ближняя/быстрая, layer2 – средняя, layer3 – дальняя),
+     - два дополнительных боковых взрыва (sideA / sideB),
+       которые срабатывают чуть позже основного, как настоящий
+       многозарядный салют.
+   Всё, что ниже вплоть до отметки "КОНЕЦ БЛОКА САЛЮТ",
+   отвечает за этот эффект.
+   ============================================================ */
+
+.fireworks{
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:0;
+  height:0;
+  z-index: 1;
+}
+
+.fireworks.side-left{  top:38%; left:28%; }
+.fireworks.side-right{ top:34%; left:72%; }
+
+.flash{
+  position:absolute;
+  top:0; left:0;
+  width:14px; height:14px;
+  margin:-7px 0 0 -7px;
+  border-radius:50%;
+  background: radial-gradient(circle, #ffffff 0%, #ffd600 35%, rgba(255,80,80,0) 70%);
+  opacity:0;
+}
+
+.flash.main{ animation: flashPulse var(--cycle) ease-out infinite; }
+.flash.small{
+  width:10px; height:10px; margin:-5px 0 0 -5px;
+  animation: flashPulseSmall var(--cycle) ease-out infinite;
+}
+
+@keyframes flashPulse{
+  0%, 73%   { opacity:0; transform:scale(0.2); }
+  76%       { opacity:1; transform:scale(2.6); }
+  84%       { opacity:0.4; transform:scale(5); }
+  91%, 100% { opacity:0; transform:scale(5.5); }
+}
+
+@keyframes flashPulseSmall{
+  0%, 80%   { opacity:0; transform:scale(0.2); }
+  83%       { opacity:1; transform:scale(2); }
+  90%       { opacity:0.3; transform:scale(3.5); }
+  96%, 100% { opacity:0; transform:scale(4); }
+}
+
+.spark{
+  position:absolute;
+  top:0; left:0;
+  width:6px; height:6px;
+  margin:-3px 0 0 -3px;
+  border-radius:50%;
+  background: var(--c, #ffcc70);
+  box-shadow: 0 0 7px var(--c, #ffcc70);
+  transform: rotate(var(--a, 0deg)) translateX(0) scale(0.4);
+  opacity:0;
+}
+
+/* волна 1 — ближние, самые быстрые искры */
+.spark.layer1{ animation: sparkBurst1 var(--cycle) ease-out infinite; }
+@keyframes sparkBurst1{
+  0%, 73%   { opacity:0; transform: rotate(var(--a)) translateX(0) scale(0.4); }
+  76%       { opacity:1; transform: rotate(var(--a)) translateX(16px) scale(1); }
+  84%       { opacity:1; transform: rotate(var(--a)) translateX(var(--d)) scale(1); }
+  91%       { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 20px)) scale(0.3); }
+  100%      { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 20px)) scale(0.3); }
+}
+
+/* волна 2 — средняя дистанция, чуть более поздний старт */
+.spark.layer2{ animation: sparkBurst2 var(--cycle) ease-out infinite; }
+@keyframes sparkBurst2{
+  0%, 75%   { opacity:0; transform: rotate(var(--a)) translateX(0) scale(0.4); }
+  79%       { opacity:1; transform: rotate(var(--a)) translateX(18px) scale(1); }
+  88%       { opacity:1; transform: rotate(var(--a)) translateX(var(--d)) scale(0.95); }
+  95%       { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 25px)) scale(0.25); }
+  100%      { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 25px)) scale(0.25); }
+}
+
+/* волна 3 — самые дальние и медленные искры, гаснут последними */
+.spark.layer3{ animation: sparkBurst3 var(--cycle) ease-out infinite; }
+@keyframes sparkBurst3{
+  0%, 77%   { opacity:0; transform: rotate(var(--a)) translateX(0) scale(0.35); }
+  82%       { opacity:0.9; transform: rotate(var(--a)) translateX(22px) scale(0.9); }
+  92%       { opacity:0.8; transform: rotate(var(--a)) translateX(var(--d)) scale(0.8); }
+  98%       { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 20px)) scale(0.2); }
+  100%      { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 20px)) scale(0.2); }
+}
+
+/* боковые взрывы — срабатывают чуть позже основного */
+.spark.side{ animation: sparkBurstSide var(--cycle) ease-out infinite; }
+@keyframes sparkBurstSide{
+  0%, 80%   { opacity:0; transform: rotate(var(--a)) translateX(0) scale(0.4); }
+  84%       { opacity:1; transform: rotate(var(--a)) translateX(14px) scale(1); }
+  90%       { opacity:1; transform: rotate(var(--a)) translateX(var(--d)) scale(0.9); }
+  96%       { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 18px)) scale(0.25); }
+  100%      { opacity:0; transform: rotate(var(--a)) translateX(calc(var(--d) + 18px)) scale(0.25); }
+}
+
+/* ==================  КОНЕЦ БЛОКА "САЛЮТ"  ================== */
